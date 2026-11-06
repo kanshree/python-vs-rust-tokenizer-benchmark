@@ -76,3 +76,25 @@ Python ÷ rust-slices, 1 core: books 5.7×, hindi 6.6×, code 5.4×. On hindi, t
 
 Not tried: Python's free-threaded build, PyPy, a Rust version with tiktoken's further optimisations (FxHash, no
 per-piece allocation). Corrections and faster honest versions (in either language) are welcome as issues or pull requests.
+
+## Round 3: making the Rust faster (`bench_opt.py`, `results/opt-20261106-173037.json`)
+
+Each step on top of the last, one core, median of 5, every output identical to tiktoken's:
+
+| Step | books | hindi | code |
+|---|---|---|---|
+| `slices` (round 2) | 0.991 s | 0.102 s | 0.284 s |
+| + FxHash (`slices+fx`) | 0.895 s | 0.080 s | 0.259 s |
+| + tiktoken's cached-rank merge loop (`cached+fx`) | 0.814 s | 0.039 s | 0.240 s |
+| + `regex` crate, o200k's look-ahead applied by hand (`cached+fx+fastre`) | 0.609 s | 0.049 s | 0.140 s |
+| + target-cpu=native | 0.615 s | 0.049 s | 0.141 s |
+| + mimalloc (`--features mimalloc`) | 0.597 s | 0.049 s | 0.139 s |
+| + panic=abort | 0.604 s | 0.049 s | 0.139 s |
+| + PGO (needs `rustup component add llvm-tools`) | 0.560 s | 0.050 s | 0.127 s |
+| all build options | 0.541 s | 0.047 s | 0.123 s |
+
+On Hindi the `regex` crate splits 2× slower than `fancy-regex` (0.020 vs 0.010 s), so `cached+fx` is the fastest there.
+On 6 threads the fully optimised build took 0.335 s, no faster than `slices` (0.310 s).
+
+`python3 fuzz.py [docs] [seed]` checks every variant against tiktoken on random text made of every kind of
+whitespace, line breaks, apostrophes, digits, Devanagari and emoji (40,026 strings with seeds 1 and 2: all match).
