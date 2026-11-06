@@ -1,0 +1,7 @@
+corpus/
+out/
+tok_rust/target/
+__pycache__/
+o200k.ranks
+o200k.pattern
+bench.log
